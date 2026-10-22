@@ -1,0 +1,6 @@
+-r requirements.txt
+
+# Development tooling
+pytest>=8.0,<10.0
+ruff>=0.11,<1.0
+mypy>=1.15,<2.0
