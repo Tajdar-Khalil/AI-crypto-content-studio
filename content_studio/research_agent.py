@@ -2,25 +2,25 @@
 
 from __future__ import annotations
 
-# Standard-library imports
 import html
 import re
 from datetime import datetime, timezone
+from importlib import import_module
 from typing import Any
 from urllib.parse import urlparse
 
-# Third-party imports
 import requests
 
-# Project imports
 from .config import Settings
 from .models import MarketSnapshot, ResearchBundle, ResearchSource
 
-
+# Keep feedparser optional. Using import_module avoids a conditional import
+# redefining the same name in the try/except branches for static type checkers.
+feedparser: Any = None
 try:
-    import feedparser
+    feedparser = import_module("feedparser")
 except ImportError:
-    feedparser = None
+    pass
 
 BINANCE_MARKET_URL = "https://data-api.binance.vision/api/v3/ticker/24hr"
 USER_AGENT = "AI-Crypto-Content-Studio/0.1 (+local research client)"
@@ -97,6 +97,7 @@ def _relevance(topic_terms: set[str], title: str, summary: str) -> int:
     summary_terms = _tokens(summary)
     return 3 * len(topic_terms & title_terms) + len(topic_terms & summary_terms)
 
+
 def tokenize(value: str) -> set[str]:
     """Return topic terms without generic words."""
     return _tokens(value) - _GENERIC_TERMS
@@ -141,8 +142,8 @@ def _fetch_feed(feed_url: str, timeout: float) -> list[dict[str, str | None]]:
             for entry in parsed_feed.entries
         ]
     else:
-        # Standard-library fallback keeps source parsing testable if optional feedparser
-        # is not installed. The normal installed application uses feedparser above.
+        # Standard-library fallback keeps source parsing testable if optional
+        # feedparser is not installed.
         from xml.etree import ElementTree
 
         try:
@@ -168,17 +169,22 @@ def _fetch_feed(feed_url: str, timeout: float) -> list[dict[str, str | None]]:
         raw_entries = []
         for element in item_elements:
             link = ""
-            for child in element.iter():
-                if local_name(child) == "link":
-                    link = child.attrib.get("href") or (child.text or "").strip()
+            for link_element in element.iter():
+                if local_name(link_element) == "link":
+                    link = link_element.attrib.get("href") or (link_element.text or "").strip()
                     if link:
                         break
             raw_entries.append(
                 {
                     "title": child_text(element, "title") or "Untitled article",
                     "url": link,
-                    "summary": child_text(element, "summary", "description", "encoded", "content"),
-                    "published_at": child_text(element, "published", "updated", "pubdate") or None,
+                    "summary": child_text(
+                        element, "summary", "description", "encoded", "content"
+                    ),
+                    "published_at": child_text(
+                        element, "published", "updated", "pubdate"
+                    )
+                    or None,
                 }
             )
 
@@ -277,7 +283,10 @@ def collect_research(topic: str, category: str, settings: Settings) -> ResearchB
         if score > 0:
             scored.append((score, entry))
 
-    scored.sort(key=lambda item: (item[0], str(item[1].get("published_at") or "")), reverse=True)
+    scored.sort(
+        key=lambda item: (item[0], str(item[1].get("published_at") or "")),
+        reverse=True,
+    )
     sources = [
         ResearchSource(
             title=str(entry["title"] or "Untitled article"),
