@@ -2,25 +2,25 @@
 
 from __future__ import annotations
 
+# Standard-library imports
 import html
 import re
 from datetime import datetime, timezone
+from typing import Any
 from urllib.parse import urlparse
 
-from typing import Any
-
+# Third-party imports
 import requests
 
-feedparser: Any = None
-try:
-    import feedparser as _feedparser
-except ImportError:  # pragma: no cover - fallback supports minimal local/test environments
-    pass
-else:
-    feedparser = _feedparser
-
+# Project imports
 from .config import Settings
 from .models import MarketSnapshot, ResearchBundle, ResearchSource
+
+
+try:
+    import feedparser
+except ImportError:
+    feedparser = None
 
 BINANCE_MARKET_URL = "https://data-api.binance.vision/api/v3/ticker/24hr"
 USER_AGENT = "AI-Crypto-Content-Studio/0.1 (+local research client)"
@@ -97,6 +97,15 @@ def _relevance(topic_terms: set[str], title: str, summary: str) -> int:
     summary_terms = _tokens(summary)
     return 3 * len(topic_terms & title_terms) + len(topic_terms & summary_terms)
 
+def tokenize(value: str) -> set[str]:
+    """Return topic terms without generic words."""
+    return _tokens(value) - _GENERIC_TERMS
+
+
+def relevance_score(topic: str, title: str, summary: str) -> int:
+    """Score an article against a topic, giving title matches more weight."""
+    return _relevance(_topic_terms(topic), title, summary)
+
 
 def _publisher(url: str, feed_title: str = "") -> str:
     host = urlparse(url).hostname or "Unknown publisher"
@@ -145,11 +154,11 @@ def _fetch_feed(feed_url: str, timeout: float) -> list[dict[str, str | None]]:
             return element.tag.rsplit("}", 1)[-1].casefold()
 
         def child_text(element: ElementTree.Element, *names: str) -> str:
-            for child in element.iter():
-                if child is element:
+            for descendant in element.iter():
+                if descendant is element:
                     continue
-                if local_name(child) in names and (child.text or "").strip():
-                    return child.text or ""
+                if local_name(descendant) in names and (descendant.text or "").strip():
+                    return descendant.text or ""
             return ""
 
         feed_title = child_text(root, "title")

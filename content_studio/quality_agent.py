@@ -69,7 +69,9 @@ def check_content(draft_text: str, research: ResearchBundle) -> QualityReport:
     )
     if risky:
         warnings.append(
-            "Review potential guaranteed-return or risk-free claims: " + ", ".join(risky) + "."
+            "Guaranteed returns language detected: "
+            + ", ".join(risky)
+            + "."
         )
 
     source_urls = [source.url for source in research.sources if source.url]
@@ -88,7 +90,7 @@ def check_content(draft_text: str, research: ResearchBundle) -> QualityReport:
             "The draft does not include a supplied source URL; confirm source attribution before publication."
         )
 
-    if not has_content or not has_sources:
+    if not has_content or not has_sources or risky:
         status = "failed"
     elif warnings:
         status = "passed_with_warnings"

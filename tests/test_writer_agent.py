@@ -1,5 +1,7 @@
-import pytest
 from unittest.mock import Mock
+
+import pytest
+
 from content_studio.config import Settings
 from content_studio.models import ResearchBundle, ResearchSource
 from content_studio.writer_agent import WriterConfigurationError, WriterProviderError, generate_post

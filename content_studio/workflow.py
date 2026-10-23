@@ -1,6 +1,7 @@
 """Core first-milestone workflow: research first, then real AI writing and saved output."""
 
 from __future__ import annotations
+
 from .config import Settings
 from .database import save_draft
 from .models import ResearchBundle

@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import json
+from typing import Any
+
 import requests
+
 from .config import Settings
 from .models import ResearchBundle
 
@@ -70,7 +73,7 @@ def _generate_groq(prompt: str, settings: Settings) -> str:
         "Authorization": f"Bearer {settings.groq_api_key}",
         "Content-Type": "application/json",
     }
-    payload = {
+    payload: dict[str, Any] = {
         "model": settings.groq_model,
         "messages": [
             {
