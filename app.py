@@ -128,16 +128,10 @@ def _render_visual_package(visuals: dict, approved: bool) -> None:
     chart_png = visuals.get("chart_png")
     if chart_png:
         st.image(chart_png, caption=f"{plan.get('chart_type', 'Market').title()} chart · {', '.join(plan.get('symbols', []))}")
-        if approved:
-            st.download_button(
-                "Download matching chart (PNG)",
-                data=chart_png,
-                file_name=visuals.get("chart_filename") or "content_chart.png",
-                mime="image/png",
-                key="download_package_chart",
-            )
-        else:
+        if not approved:
             st.caption("Chart download unlocks after you approve the complete package.")
+        else:
+            st.caption("Use the chart download control in the final approval section below.")
     else:
         st.info(
             "No market chart was generated for this post, or live data could not be validated. "
@@ -173,16 +167,10 @@ def _render_visual_package(visuals: dict, approved: bool) -> None:
             "This version uses a consistent Matplotlib layout and extracts key points from the written post. "
             "A text-to-image generation provider is not connected."
         )
-        if approved:
-            st.download_button(
-                "Download post infographic (PNG)",
-                data=infographic_png,
-                file_name=visuals.get("infographic_filename") or "post_infographic.png",
-                mime="image/png",
-                key="download_package_infographic",
-            )
-        else:
+        if not approved:
             st.caption("Infographic download unlocks after you approve the complete package.")
+        else:
+            st.caption("Use the infographic download control in the final approval section below.")
     else:
         st.warning("The infographic could not be rendered. The written post remains available for review.")
 
