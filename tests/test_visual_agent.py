@@ -106,3 +106,23 @@ def test_visual_package_still_creates_infographic_when_market_chart_is_not_relev
     assert package["chart_png"] is None
     assert package["infographic_png"].startswith(b"\x89PNG\r\n\x1a\n")
     assert package["validation"]["status"] == "passed"
+
+def test_market_data_disabled_skips_chart_fetch_and_keeps_infographic(monkeypatch, tmp_path):
+    def fail_if_called(*args, **kwargs):
+        raise AssertionError("Market-data fetch should not run when disabled.")
+
+    monkeypatch.setattr("content_studio.visual_agent.fetch_klines", fail_if_called)
+    package = generate_visual_package(
+        post_text=(
+            "# Bitcoin weekly price analysis\n"
+            "Bitcoin (BTC) price movement over the last 7 days."
+        ),
+        topic="Bitcoin weekly price analysis",
+        research=make_research(),
+        settings=make_settings(tmp_path, market_data_enabled=False),
+    )
+
+    assert package["chart_png"] is None
+    assert package["infographic_png"].startswith(b"\x89PNG\r\n\x1a\n")
+    assert any("disabled" in warning.lower() for warning in package["warnings"])
+
