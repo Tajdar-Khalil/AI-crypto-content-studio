@@ -143,7 +143,7 @@ def render_market_chart_workspace(settings: Settings) -> None:
                     "Trades (24h)": snapshot.trades_24h,
                     "Trades (selected candles)": snapshot.period_trades,
                     "Funding rate (raw decimal)": snapshot.funding_rate,
-                    "Open interest": snapshot.open_interest,
+                    "Open interest (provider units)": snapshot.open_interest,
                     "Retrieved (UTC)": snapshot.retrieved_at,
                 }
             )
