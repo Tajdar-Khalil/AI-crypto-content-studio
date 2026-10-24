@@ -72,6 +72,7 @@ def test_summary_uses_real_candle_values_and_market_metadata() -> None:
             "close": [105.0, 110.0],
             "volume": [10.0, 12.0],
             "quote_volume": [1050.0, 1320.0],
+            "trades": [20, 20],
         }
     )
     snapshot = summarize_market(
