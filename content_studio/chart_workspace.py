@@ -140,7 +140,9 @@ def render_market_chart_workspace(settings: Settings) -> None:
                     "Period change (%)": snapshot.period_change_percent,
                     "Base volume": snapshot.period_base_volume,
                     "Quote volume (USDT)": snapshot.period_quote_volume,
-                    "Funding rate": snapshot.funding_rate,
+                    "Trades (24h)": snapshot.trades_24h,
+                    "Trades (selected candles)": snapshot.period_trades,
+                    "Funding rate (raw decimal)": snapshot.funding_rate,
                     "Open interest": snapshot.open_interest,
                     "Retrieved (UTC)": snapshot.retrieved_at,
                 }
