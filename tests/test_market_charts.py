@@ -84,6 +84,7 @@ def test_summary_uses_real_candle_values_and_market_metadata() -> None:
             "change_24h_percent": "3.2",
             "funding_rate": "0.0001",
             "open_interest": "12345",
+            "trades_24h": "1200",
             "mark_price": "110.9",
             "index_price": "111.1",
         },
@@ -95,7 +96,10 @@ def test_summary_uses_real_candle_values_and_market_metadata() -> None:
     assert snapshot.market_type == "futures"
     assert snapshot.funding_rate == "0.0001"
     assert snapshot.open_interest == "12345"
+    assert snapshot.period_trades == "40"
+    assert snapshot.trades_24h == "1200"
     assert any("10.000000%" in line for line in market_fact_lines(snapshot))
+    assert any("0.010000%" in line for line in market_fact_lines(snapshot))
 
 
 def test_render_line_and_candlestick_charts_as_png() -> None:
