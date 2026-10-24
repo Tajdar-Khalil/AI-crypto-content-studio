@@ -126,3 +126,13 @@ def test_market_data_disabled_skips_chart_fetch_and_keeps_infographic(monkeypatc
     assert package["infographic_png"].startswith(b"\x89PNG\r\n\x1a\n")
     assert any("disabled" in warning.lower() for warning in package["warnings"])
 
+def test_planner_selects_quote_volume_chart_for_volume_post():
+    plan = plan_visuals(
+        "# Bitcoin trading volume\nBitcoin (BTC) quote volume increased during the selected period.",
+        period="7d",
+    )
+
+    assert plan["chart_needed"] is True
+    assert plan["chart_type"] == "volume"
+    assert plan["symbols"] == ["BTCUSDT"]
+
