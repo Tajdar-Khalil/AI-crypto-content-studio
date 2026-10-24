@@ -148,6 +148,7 @@ def fetch_market_metrics(
             "change_24h_percent": str(ticker.get("priceChangePercent", "")) or None,
             "base_volume_24h": str(ticker.get("volume", "")) or None,
             "quote_volume_24h": str(ticker.get("quoteVolume", "")) or None,
+            "trades_24h": str(ticker.get("count", "")) or None,
             "funding_rate": None,
             "open_interest": None,
             "mark_price": None,
@@ -213,6 +214,8 @@ def summarize_market(
         period_change_percent=f"{period_change:.6f}",
         period_base_volume=f"{float(frame['volume'].sum()):.12g}",
         period_quote_volume=f"{float(frame['quote_volume'].sum()):.12g}",
+        trades_24h=metrics.get("trades_24h"),
+        period_trades=str(int(frame["trades"].sum())),
         funding_rate=metrics.get("funding_rate"),
         open_interest=metrics.get("open_interest"),
         mark_price=metrics.get("mark_price"),
@@ -316,8 +319,19 @@ def market_fact_lines(snapshot: MarketSnapshot) -> list[str]:
         lines.append(f"- Base-asset volume over retrieved candles: {snapshot.period_base_volume}")
     if snapshot.period_quote_volume:
         lines.append(f"- Quote volume over retrieved candles: {snapshot.period_quote_volume} USDT")
+    if snapshot.trades_24h is not None:
+        lines.append(f"- Reported trades in the last 24 hours: {snapshot.trades_24h}")
+    if snapshot.period_trades is not None:
+        lines.append(f"- Trades in retrieved historical candles: {snapshot.period_trades}")
     if snapshot.funding_rate is not None:
-        lines.append(f"- Latest reported futures funding rate: {snapshot.funding_rate}")
+        try:
+            funding_percent = float(snapshot.funding_rate) * 100
+            lines.append(
+                f"- Latest reported futures funding rate: {snapshot.funding_rate} raw decimal "
+                f"({funding_percent:.6f}% per funding interval, as reported by Binance)"
+            )
+        except ValueError:
+            lines.append(f"- Latest reported futures funding rate (raw provider value): {snapshot.funding_rate}")
     if snapshot.open_interest is not None:
         lines.append(f"- Futures open interest: {snapshot.open_interest}")
     if snapshot.mark_price is not None:
