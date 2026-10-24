@@ -26,7 +26,7 @@ Build a single-user, local-first Python application using a **modular monolith**
 
 ## 3. Logical Architecture
 
-\`\`\`
+```
 User
   -> Streamlit content-first UI
   -> Topic discovery agent -> configured niche RSS feeds
@@ -42,7 +42,7 @@ User
   -> Markdown/PNG download
   -> Publishing integration (future; disabled in current UI)
   -> SQLite repositories for research/workflow/draft persistence
-\`\`\`
+```
 
 The research bundle is the common evidence source, but visual planning is post-first: the writer's output determines what visual is appropriate. The visual agent also receives the original evidence bundle so it can plot real data instead of guessing from prose. A chart is omitted when the post has no supported market-data context. UI rendering calls application services rather than raw external provider requests. Agents do not query SQLite directly. Publishing remains disabled until a supported integration is implemented.
 
