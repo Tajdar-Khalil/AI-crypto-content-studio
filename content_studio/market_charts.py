@@ -73,7 +73,7 @@ def fetch_klines(
     try:
         response = requests.get(
             url,
-            params={"symbol": normalized_symbol, "interval": interval, "limit": limit},
+            params={"symbol": normalized_symbol, "interval": interval, "limit": limit + 1},
             timeout=timeout,
             headers={"User-Agent": "AI-Crypto-Content-Studio/0.2"},
         )
@@ -111,6 +111,8 @@ def fetch_klines(
     frame["close_time"] = pd.to_datetime(frame["close_time"], unit="ms", utc=True, errors="coerce")
     frame = frame.dropna(subset=["open_time", "close_time", "open", "high", "low", "close", "volume"])
     frame = frame.sort_values("open_time").drop_duplicates("open_time").reset_index(drop=True)
+    # Exclude the currently forming candle so period statistics use completed candles only.
+    frame = frame[frame["close_time"] <= pd.Timestamp.now(tz="UTC")].tail(limit).reset_index(drop=True)
     if frame.empty:
         raise MarketDataError(f"No valid candle rows were received for {normalized_symbol}.")
     if (frame[["open", "high", "low", "close"]] <= 0).any().any():
