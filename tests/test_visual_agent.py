@@ -89,7 +89,7 @@ def test_post_infographic_is_a_png_and_uses_post_points():
         retrieved_at="2026-10-24T00:00:00+00:00",
     )
 
-    assert png.startswith(b"\\x89PNG\\r\\n\\x1a\\n")
+    assert png.startswith(b"\x89PNG\r\n\x1a\n")
 
 
 def test_visual_package_still_creates_infographic_when_market_chart_is_not_relevant(tmp_path):
@@ -104,5 +104,5 @@ def test_visual_package_still_creates_infographic_when_market_chart_is_not_relev
     )
 
     assert package["chart_png"] is None
-    assert package["infographic_png"].startswith(b"\\x89PNG\\r\\n\\x1a\\n")
+    assert package["infographic_png"].startswith(b"\x89PNG\r\n\x1a\n")
     assert package["validation"]["status"] == "passed"
