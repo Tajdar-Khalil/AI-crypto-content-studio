@@ -29,9 +29,9 @@ _ASSET_PATTERNS = {
 }
 _MARKET_TERMS = (
     "price", "price action", "price trend", "price movement", "market data",
-    "market performance", "trading", "spot", "futures", "perpetual",
+    "market performance", "price performance", "trading", "spot trading", "futures", "perpetual",
     "candlestick", "ohlc", "volume", "liquidity", "open interest",
-    "funding rate", "returns", "performance", "turnover", "price change",
+    "funding rate", "returns", "turnover", "price change",
 )
 _VOLUME_TERMS = ("volume", "trading activity", "turnover", "trade count")
 _PIE_TERMS = ("volume share", "share of volume", "volume distribution", "volume composition")
@@ -53,7 +53,10 @@ def _body_without_sources(post_text: str) -> str:
 
 def _contains_term(text: str, terms: tuple[str, ...]) -> bool:
     lowered = text.casefold()
-    return any(term in lowered for term in terms)
+    return any(
+        re.search(rf"(?<!\w){re.escape(term.casefold())}(?!\w)", lowered)
+        for term in terms
+    )
 
 
 def _symbols_in_post(post_text: str) -> list[str]:
@@ -98,14 +101,20 @@ def plan_visuals(
         if len(symbols) >= 2 and _contains_term(lowered, _PIE_TERMS):
             chart_type = "pie"
             reason = (
-                "The post discusses the distribution of trading volume, so the chart shows each "
-                "mentioned pair's share of the retrieved quote volume. This is not total crypto market share."
+                "The post discusses volume distribution, so the chart shows each mentioned pair's "
+                "share of retrieved quote volume. This is not total crypto market share."
             )
         elif len(symbols) >= 2 and _contains_term(lowered, _SCATTER_TERMS):
             chart_type = "scatter"
             reason = (
                 "The post discusses volume against price movement; the scatter plot compares those "
                 "two observed measures across the assets named in the post."
+            )
+        elif len(symbols) >= 2 and _contains_term(lowered, _VOLUME_TERMS):
+            chart_type = "pie"
+            reason = (
+                "The post compares trading activity across multiple supported assets, so the chart "
+                "shows each named pair's share of retrieved quote volume, not total market share."
             )
         elif len(symbols) >= 2:
             chart_type = "comparison"
