@@ -113,12 +113,15 @@ def plan_visuals(
                 "The post mentions multiple supported assets in a market context, so the chart compares "
                 "their indexed price performance using the same selected period."
             )
-        elif any(term in lowered for term in ("candlestick", "ohlc", "futures", "spot trading", "technical analysis")):
+        elif any(term in lowered for term in ("candlestick", "ohlc", "technical analysis")):
             chart_type = "candlestick"
-            reason = "The post discusses trading mechanics or OHLC price action, so a candlestick chart is suitable."
+            reason = "The post explicitly discusses OHLC or technical price action, so a candlestick chart is suitable."
         elif _contains_term(lowered, _VOLUME_TERMS):
-            chart_type = "bar"
-            reason = "The post discusses volume or trading activity, so the chart shows per-candle price changes."
+            chart_type = "volume"
+            reason = "The post discusses volume or trading activity, so the chart displays observed quote volume from the selected candles."
+        elif any(term in lowered for term in ("futures", "spot trading")):
+            chart_type = "candlestick"
+            reason = "The post discusses spot/futures trading mechanics, so an OHLC candlestick chart is suitable."
         else:
             chart_type = "line"
             reason = "The post discusses a price trend, so a line chart is the clearest matching visual."
