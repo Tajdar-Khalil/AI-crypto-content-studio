@@ -28,6 +28,20 @@ class MarketSnapshot:
     price_change_percent_24h: str | None = None
     retrieved_at: str = ""
     source_url: str = ""
+    market_type: str = "spot"
+    period: str | None = None
+    period_start_price: str | None = None
+    period_end_price: str | None = None
+    period_change_percent: str | None = None
+    period_base_volume: str | None = None
+    period_quote_volume: str | None = None
+    trades_24h: str | None = None
+    period_trades: str | None = None
+    funding_rate: str | None = None
+    open_interest: str | None = None
+    mark_price: str | None = None
+    index_price: str | None = None
+    data_points: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

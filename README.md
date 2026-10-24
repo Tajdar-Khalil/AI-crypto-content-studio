@@ -54,6 +54,15 @@ Current workflow
 5. Edit the draft and rerun basic quality checks.
 6. Reopen saved drafts from local history.
 The application refuses to draft from zero directly relevant research sources. Suggested headlines are prompts for narrowing a topic, not evidence for the requested claim.
+
+Market charts and data
+- The Market charts and verified facts section retrieves historical Binance Spot and USDⓈ-M Futures candles for BTCUSDT, ETHUSDT, BNBUSDT, SOLUSDT, and XRPUSDT.
+- Supported periods are 24 hours, 7 days, and 30 days. Charts include line, per-candle percentage-change bars, candlesticks, and relative-performance comparison.
+- The chart workspace uses pandas to validate and summarize returned OHLCV candles and Matplotlib to render PNG charts. It excludes the currently forming candle from historical period calculations.
+- Futures views may include 24-hour change, volume, funding rate, mark price, index price, and open interest when Binance supplies those metrics.
+- Select "Attach these facts to current research" to pass timestamped, source-linked market facts to the AI writing prompt. Then generate the draft again to include the new evidence.
+- These endpoints are public market-data endpoints. The application does not place trades or require private trading credentials. Futures data is market information, not a recommendation to trade.
+- Market data cannot verify future prices. Any outlook must remain clearly labeled as uncertain. Gold pricing is deferred until a verified gold data source is selected.
 Source documents
 - PRD.md — product requirements and scope
 - DESIGN.md — visual tokens, reusable UI patterns, responsive and accessibility rules
