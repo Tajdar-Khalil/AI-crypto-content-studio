@@ -15,6 +15,9 @@ DEFAULT_RSS_FEEDS = [
     "https://www.coindesk.com/arc/outboundfeeds/rss/",
     "https://cointelegraph.com/rss",
     "https://decrypt.co/feed",
+    "https://www.fxstreet.com/rss/news",
+    "https://www.fxstreet.com/rss/crypto",
+    "https://feeds.a.dj.com/rss/RSSMarketsMain.xml",
 ]
 
 
