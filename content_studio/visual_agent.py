@@ -331,6 +331,21 @@ def generate_visual_package(
     validation: list[dict[str, str | bool]] = []
     attempts = 0
 
+    if plan["chart_needed"] and not settings.market_data_enabled:
+        warnings.append(
+            "Market chart generation is disabled by BINANCE_MARKET_DATA_ENABLED. "
+            "The infographic remains available."
+        )
+        plan = {
+            **plan,
+            "chart_needed": False,
+            "chart_type": None,
+            "reason": (
+                "Market data is disabled in application settings, so no live chart was requested. "
+                "The infographic still summarizes the written post."
+            ),
+        }
+
     if plan["chart_needed"]:
         for attempt in range(2):
             attempts = attempt + 1
