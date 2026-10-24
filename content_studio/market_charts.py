@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
+from datetime import timezone
 from io import BytesIO
-from typing import Any, Literal
+from typing import Literal
 
-import matplotlib
-
-matplotlib.use("Agg")
 import matplotlib.dates as mdates
-import matplotlib.pyplot as plt
 import pandas as pd
 import requests
+from matplotlib.backends.backend_agg import FigureCanvasAgg
+from matplotlib.figure import Figure
 from matplotlib.patches import Rectangle
 
 from .models import MarketSnapshot
@@ -90,7 +89,7 @@ def fetch_klines(
 
     rows = []
     for candle in payload:
-        if not isinstance(candle, list) or len(candle) < 11:
+        if not isinstance(candle, list) or len(candle) < 12:
             raise MarketDataError(f"Binance returned an invalid candle for {normalized_symbol}.")
         rows.append(candle[:12])
 
@@ -234,7 +233,9 @@ def render_market_chart(
     if chart_type not in {"line", "bar", "candlestick", "comparison"}:
         raise ValueError(f"Unsupported chart type: {chart_type}")
 
-    fig, ax = plt.subplots(figsize=(10, 5.5), constrained_layout=True)
+    fig = Figure(figsize=(10, 5.5), constrained_layout=True)
+    FigureCanvasAgg(fig)
+    ax = fig.subplots()
     title = f"{symbol.upper()} {market_type.title()} · {period}"
     if chart_type == "line":
         ax.plot(frame["open_time"], frame["close"], linewidth=2, label="Close price")
@@ -289,11 +290,10 @@ def render_market_chart(
     ax.set_title(title)
     ax.set_xlabel("Time (UTC)")
     ax.grid(True, alpha=0.25)
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("%b %d\n%H:%M", tz=mdates.UTC))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%b %d\n%H:%M", tz=timezone.utc))
     fig.autofmt_xdate()
     output = BytesIO()
     fig.savefig(output, format="png", dpi=150, bbox_inches="tight")
-    plt.close(fig)
     return output.getvalue()
 
 
