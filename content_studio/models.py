@@ -35,6 +35,8 @@ class MarketSnapshot:
     period_change_percent: str | None = None
     period_base_volume: str | None = None
     period_quote_volume: str | None = None
+    trades_24h: str | None = None
+    period_trades: str | None = None
     funding_rate: str | None = None
     open_interest: str | None = None
     mark_price: str | None = None
