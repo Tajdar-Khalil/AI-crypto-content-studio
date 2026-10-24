@@ -46,10 +46,6 @@ _CATEGORY_TERMS: dict[str, set[str]] = {
 }
 
 
-def _tokens(text: str) -> set[str]:
-    return {word.casefold() for word in text.replace("/", " ").replace("-", " ").split() if word}
-
-
 def _published_timestamp(value: str | None) -> float:
     """Parse common RSS/Atom date formats; unknown dates sort behind dated items."""
     if not value:
@@ -95,9 +91,10 @@ def discover_topic_ideas(
     for entry in deduplicated.values():
         title = str(entry.get("title") or "")
         summary = str(entry.get("summary") or "")
-        content = f"{title} {summary}".casefold()
-        score = sum(3 for term in terms if term in title.casefold()) + sum(
-            1 for term in terms if term in summary.casefold()
+        title_lower = title.casefold()
+        summary_lower = summary.casefold()
+        score = sum(3 for term in terms if term in title_lower) + sum(
+            1 for term in terms if term in summary_lower
         )
         ranked.append((score, _published_timestamp(entry.get("published_at")), entry))
 
