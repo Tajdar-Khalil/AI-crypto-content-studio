@@ -5,6 +5,7 @@ from __future__ import annotations
 import streamlit as st
 
 from content_studio.config import get_settings
+from content_studio.chart_workspace import render_market_chart_workspace
 from content_studio.database import init_db
 from content_studio.models import MarketSnapshot, ResearchBundle, ResearchSource
 from content_studio.quality_agent import check_content
@@ -168,6 +169,8 @@ def render_content_workspace() -> None:
                 st.error(
                     f"Draft generation failed ({type(exc).__name__}). Check the logs and provider settings."
                 )
+
+    render_market_chart_workspace(settings)
 
     research_dict = st.session_state.research_bundle
     if research_dict:
