@@ -40,7 +40,7 @@ GEMINI_API_KEY	Optional Gemini key	Empty
 GEMINI_MODEL	Optional Gemini model	gemini-3.8-flash
 DATABASE_PATH	SQLite database path	data/content_studio.db
 MEDIA_STORAGE_PATH	Generated-image location for planned image support	data/generated_images
-RSS_FEEDS	Comma-separated RSS/Atom feed URLs	CoinDesk, Cointelegraph, Decrypt, FXStreet news/crypto, WSJ markets
+RSS_FEEDS	Comma-separated RSS/Atom feed URLs	CoinDesk, Cointelegraph, Decrypt, Bloomberg Markets, WSJ Markets, Google News forex search
 RSS_TIMEOUT_SECONDS	RSS request timeout	12
 REQUEST_TIMEOUT_SECONDS	General external request timeout	20
 MAX_RESEARCH_RESULTS	Maximum relevant research sources	6
