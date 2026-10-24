@@ -29,7 +29,7 @@ def render_market_chart_workspace(settings: Settings) -> None:
     st.divider()
     st.header("Market charts and verified facts")
     st.caption(
-        "Charts use Binance public market data. They are research evidence, not price predictions or trading instructions."
+        "Charts use Binance public market data. This workspace does not place trades or connect to your trading account. Market data is evidence, not a price prediction or trading instruction."
     )
 
     left, middle, right = st.columns(3)
