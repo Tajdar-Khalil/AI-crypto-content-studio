@@ -247,7 +247,8 @@ def render_market_chart(
         ax.set_ylabel("Price (USDT)")
     elif chart_type == "bar":
         changes = frame["close"].pct_change().fillna(0) * 100
-        ax.bar(frame["open_time"], changes, width=0.025 if period == "24h" else 0.08)
+        bar_width = {"24h": 0.007, "7d": 0.03, "30d": 0.12}[period]
+        ax.bar(frame["open_time"], changes, width=bar_width)
         ax.axhline(0, linewidth=0.8)
         ax.set_ylabel("Price change per candle (%)")
     elif chart_type == "candlestick":
@@ -333,7 +334,7 @@ def market_fact_lines(snapshot: MarketSnapshot) -> list[str]:
         except ValueError:
             lines.append(f"- Latest reported futures funding rate (raw provider value): {snapshot.funding_rate}")
     if snapshot.open_interest is not None:
-        lines.append(f"- Futures open interest: {snapshot.open_interest}")
+        lines.append(f"- Futures open interest (provider-reported units): {snapshot.open_interest}")
     if snapshot.mark_price is not None:
         lines.append(f"- Futures mark price: {snapshot.mark_price} USDT")
     if snapshot.index_price is not None:
