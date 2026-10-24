@@ -47,10 +47,11 @@ def render_market_chart_workspace(settings: Settings) -> None:
 
     chart_type = st.selectbox(
         "Chart type",
-        ["line", "bar", "candlestick", "comparison"],
+        ["line", "bar", "volume", "candlestick", "comparison"],
         format_func=lambda value: {
             "line": "Line — price trend",
             "bar": "Bar — per-candle price change",
+            "volume": "Volume bars — quote volume",
             "candlestick": "Candlestick — OHLC",
             "comparison": "Comparison — relative performance",
         }[value],

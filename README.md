@@ -1,6 +1,8 @@
-AI Crypto Content Studio
-A single-user Streamlit workspace for researching finance and cryptocurrency topics, generating source-grounded drafts with Groq, checking basic content quality, and saving editable drafts locally in SQLite.
-Current implemented scope: RSS-based research, optional public Binance market snapshots, Groq text generation (with optional Gemini support), basic deterministic quality checks, draft editing, SQLite history, and base Streamlit navigation. Image generation, scheduled execution, and Binance Square publishing are not implemented yet.
+# AI Crypto Content Studio
+
+A single-user Streamlit application that researches finance, cryptocurrency, trading, forex, spot/futures, and digital-asset technology topics; creates source-grounded posts; derives matching charts and infographics from the written post; validates the package; and provides a local approval and download flow.
+
+Current implemented scope on the content-first workflow branch: niche-aware recent-topic suggestions from configured RSS feeds, RSS evidence collection, optional Binance Spot/Futures market data, Groq text generation (with optional Gemini support), selectable post formats, post-derived chart planning, Matplotlib charts, a template infographic, deterministic visual/quality checks, a one-time simpler-chart retry, draft editing, local approval and downloads, and SQLite history. Text-to-image generation, automatic scheduling, and Binance Square publishing are not implemented.
 
 Requirements
 - Python 3.11 or newer
@@ -38,7 +40,7 @@ GEMINI_API_KEY	Optional Gemini key	Empty
 GEMINI_MODEL	Optional Gemini model	gemini-3.8-flash
 DATABASE_PATH	SQLite database path	data/content_studio.db
 MEDIA_STORAGE_PATH	Generated-image location for planned image support	data/generated_images
-RSS_FEEDS	Comma-separated RSS/Atom feed URLs	CoinDesk, Cointelegraph, Decrypt
+RSS_FEEDS	Comma-separated RSS/Atom feed URLs	CoinDesk, Cointelegraph, Decrypt, Bloomberg Markets, WSJ Markets, Google News forex search
 RSS_TIMEOUT_SECONDS	RSS request timeout	12
 REQUEST_TIMEOUT_SECONDS	General external request timeout	20
 MAX_RESEARCH_RESULTS	Maximum relevant research sources	6
@@ -46,21 +48,27 @@ BINANCE_MARKET_DATA_ENABLED	Enable public market snapshots	true
 LOG_LEVEL	Logging level	INFO
 
 
-Current workflow
-1. Enter a focused finance or crypto topic.
-2. Click Research topic to collect configured RSS evidence and optional public market data.
-3. Inspect source URLs, summaries, timestamps, and warnings.
-4. Generate a draft only when directly relevant sources are available and the selected text provider is configured.
-5. Edit the draft and rerun basic quality checks.
-6. Reopen saved drafts from local history.
-The application refuses to draft from zero directly relevant research sources. Suggested headlines are prompts for narrowing a topic, not evidence for the requested claim.
+## Content-first multiagent workflow
+
+1. Choose a niche: crypto market analysis, spot trading, futures/derivatives, forex/macro, finance and digital assets, blockchain technology, security/risk, or education.
+2. Enter your own topic or discover recent, category-matched headlines from configured RSS feeds. These are recent feed suggestions, not social-platform trend metrics.
+3. Research Agent collects directly relevant article titles, summaries, source URLs, dates/timestamps, and available public market snapshots. Review source coverage and warnings.
+4. Content Writer receives the research bundle and writes the selected post format (market analysis, market update, news breakdown, explainer, beginner guide, thread, comparison, myth-vs-fact, checklist, trading concept, or technology explainer).
+5. The visual planner reads the actual generated post. It creates a market chart only if the post mentions a supported asset and has market context; the original source-linked research remains available to support the visual. Unrelated technology/education posts get an infographic but no unrelated market chart.
+6. The Chart/Plot Agent fetches validated Binance Spot or USDⓈ-M Futures candles for supported USDT pairs (BTC, ETH, BNB, SOL, XRP) and creates a suitable line, bar, candlestick, comparison, pie (selected-pair volume share), or scatter (observed price change vs quote volume) chart. A pie chart describes only the retrieved selected pairs, not whole-market share.
+7. The infographic agent creates a template-based PNG summary from the post heading and key points. It is not a text-to-image model.
+8. Visual and post quality checks are displayed. If chart retrieval or checks fail, the visual agent retries once using a simpler single-asset line chart; unresolved problems remain visible as warnings and no unvalidated chart is included.
+9. Edit the post and regenerate its visual package, review the complete result, confirm approval, then download the Markdown post and available PNGs. The approval step is local; it does not publish content automatically.
+10. Reopen saved drafts from local history. Rebuilt visuals are based on the saved post text.
+
+The writer remains disabled when no directly relevant research sources are found. Suggested headlines help users choose a narrower research topic; they are not evidence for unrelated claims.
 
 Market charts and data
 - The Market charts and verified facts section retrieves historical Binance Spot and USDⓈ-M Futures candles for BTCUSDT, ETHUSDT, BNBUSDT, SOLUSDT, and XRPUSDT.
 - Supported periods are 24 hours, 7 days, and 30 days. Charts include line, per-candle percentage-change bars, candlesticks, and relative-performance comparison.
 - The chart workspace uses pandas to validate and summarize returned OHLCV candles and Matplotlib to render PNG charts. It excludes the currently forming candle from historical period calculations.
 - Futures views may include 24-hour change, volume, funding rate, mark price, index price, and open interest when Binance supplies those metrics.
-- Select "Attach these facts to current research" to pass timestamped, source-linked market facts to the AI writing prompt. Then generate the draft again to include the new evidence.
+- In the content-first workflow, market charts are generated downstream from the written post. The visual planner uses post context to select a chart and uses verified historical data and source timestamps rather than guessing values.
 - These endpoints are public market-data endpoints. The application does not place trades or require private trading credentials. Futures data is market information, not a recommendation to trade.
 - Market data cannot verify future prices. Any outlook must remain clearly labeled as uncertain. Gold pricing is deferred until a verified gold data source is selected.
 Source documents
@@ -80,7 +88,7 @@ Current limitations
 - RSS is a limited research source, not a full web-search engine.
 - Topic matching is keyword-based and can miss relevant news.
 - Quality checks do not guarantee factual accuracy or regulatory compliance.
-- Image generation, automatic scheduling, and Binance Square publishing are planned but not implemented.
+- A text-to-image image-generation provider, automatic scheduling, and Binance Square publishing are not implemented. The infographic currently uses a template-based Matplotlib renderer.
 - Free API tiers have quotas and may change.
 - The application is intended for local single-owner use. Remote exposure requires an appropriate authentication layer and HTTPS.
 Troubleshooting

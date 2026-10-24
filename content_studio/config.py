@@ -15,6 +15,9 @@ DEFAULT_RSS_FEEDS = [
     "https://www.coindesk.com/arc/outboundfeeds/rss/",
     "https://cointelegraph.com/rss",
     "https://decrypt.co/feed",
+    "https://feeds.bloomberg.com/markets/news.rss",
+    "https://feeds.content.dowjones.io/public/rss/RSSMarketsMain",
+    "https://news.google.com/rss/search?q=forex+currency+foreign+exchange&hl=en-US&gl=US&ceid=US:en",
 ]
 
 

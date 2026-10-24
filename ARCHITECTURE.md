@@ -26,20 +26,25 @@ Build a single-user, local-first Python application using a **modular monolith**
 
 ## 3. Logical Architecture
 
-```text
-Owner
-  -> Streamlit UI and navigation
-  -> Application services
-      -> Research agent -> RSS and public market data
-      -> Writing agent -> Groq API
-      -> Image agent -> configured image API (future phase)
-      -> Quality agent -> deterministic checks, optional AI review
-      -> Publishing service -> verified Binance Square integration (future phase)
-      -> Repositories -> SQLite
-      -> Media storage -> local generated-image files
+```
+User
+  -> Streamlit content-first UI
+  -> Topic discovery agent -> configured niche RSS feeds
+  -> Research agent -> relevant articles + timestamps + optional public market data
+  -> Structured ResearchBundle (shared evidence object)
+  -> Content Writer -> selected post format -> generated post
+  -> Content-to-Visual Planner (reads the written post)
+      -> Chart/Plot Agent -> validated Binance OHLCV data when the post warrants it
+      -> Infographic Agent -> template-based visual summary from post key points
+  -> Visual validation -> one simpler-chart retry on failure
+  -> Combined content package -> post + visual(s) + sources + validation
+  -> User edits, reviews, and explicitly approves
+  -> Markdown/PNG download
+  -> Publishing integration (future; disabled in current UI)
+  -> SQLite repositories for research/workflow/draft persistence
 ```
 
-All modules are in one deployable application. UI rendering must not contain raw provider requests. Agents must not query SQLite directly. Publishing is only invoked through the publishing service.
+The research bundle is the common evidence source, but visual planning is post-first: the writer's output determines what visual is appropriate. The visual agent also receives the original evidence bundle so it can plot real data instead of guessing from prose. A chart is omitted when the post has no supported market-data context. UI rendering calls application services rather than raw external provider requests. Agents do not query SQLite directly. Publishing remains disabled until a supported integration is implemented.
 
 ## 4. Project Structure
 
@@ -48,7 +53,10 @@ All modules are in one deployable application. UI rendering must not contain raw
 - `content_studio/models.py`: shared typed data structures.
 - `content_studio/database.py`: SQLite connection setup and schema migrations.
 - `content_studio/repositories.py`: all persistence queries.
-- `content_studio/workflow_service.py`: stage orchestration.
+- `content_studio/workflow_service.py`: research-backed writing, quality checks, and draft persistence.
+- `content_studio/pipeline_service.py`: connects the saved research-backed post to the downstream visual package.
+- `content_studio/topic_agent.py`: niche-based recent headline discovery from configured feeds (not social-media trend-volume measurement).
+- `content_studio/visual_agent.py`: post-derived chart planning, validated public market charts, template infographic rendering, validation, and a bounded fallback retry.
 - `content_studio/draft_service.py`: draft revisions and approval eligibility when introduced.
 - `content_studio/settings_service.py`: safe settings operations when required.
 - `content_studio/scheduler.py`: due scheduled-run execution when implemented.
@@ -66,19 +74,19 @@ Only create a module when a current feature or well-defined architectural bounda
 
 ## 5. Data Flow
 
-1. Owner submits topic/category.
-2. Workflow service records a run.
-3. Research adapter retrieves source material and public market data.
-4. Research evidence and timestamps are persisted.
-5. Writer receives topic and evidence and calls Groq.
-6. Draft is persisted as an immutable version.
-7. Image generation runs if enabled and implemented.
-8. Quality checks are persisted against the exact version.
-9. Owner edits and reviews the draft.
-10. An approved version can be submitted through the verified publisher.
-11. Results and sanitized errors are persisted.
+1. User selects a niche and enters a topic or requests recent, niche-matched RSS headline suggestions.
+2. Research agent gathers directly relevant sources, their summaries, publisher, publication/retrieval timestamps, and available public market snapshots; suggestions alone are not treated as evidence for an unrelated claim.
+3. The structured research bundle is shown for inspection and passed to the writer.
+4. The writer receives that bundle plus the chosen format, tone, and length and generates the written post.
+5. The post is saved before visual generation. The exact generated post is passed to the visual package service.
+6. The visual planner identifies assets, time periods, claims, and possible chart types using the post body (not bibliography URLs). It selects no market chart when a chart would be unrelated.
+7. The chart agent fetches validated Binance Spot/Futures candles for supported USDT pairs and generates the selected visualization. Pie charts describe retrieved quote-volume share across only the selected pairs; scatter plots use observed quote volume and open-to-close change.
+8. The infographic renderer extracts a heading and key points from the post. It is a template-based Matplotlib graphic, not a text-to-image model.
+9. Visual checks validate charted assets against the post and require source URLs/timestamps. On a chart failure, the visual agent retries once with a simpler single-asset line chart; unresolved failures remain warnings, and no unvalidated chart is included.
+10. The user may edit the post. Saving edits updates the draft and regenerates visuals from the edited text.
+11. User acknowledges the review, explicitly approves the package, and may download the Markdown and PNG outputs. Publishing is not available until a supported publisher has been implemented.
 
-A later-stage failure must not erase completed research or generated text.
+A downstream visual failure should leave the already-saved text draft intact. Approval in the current prototype is a UI gate for local downloads, not a publishing credential or automated Binance action.
 
 ## 6. Database
 
@@ -98,9 +106,16 @@ The MVP does not expose its own public REST API. Streamlit calls Python applicat
 
 ## 8. AI Agent Boundaries
 
-Agents are ordinary Python modules, not autonomous processes. The workflow service decides execution order. The researcher collects evidence; the writer generates text from that evidence; the image agent creates media; the quality agent checks content; the publishing service enforces current-version approval. AI output is not proof of factual correctness.
+Agents are ordinary Python modules, not autonomous processes. The orchestration service decides execution order:
+- Topic agent ranks recent configured-feed headlines for the chosen niche.
+- Research agent gathers source-backed evidence and available public market data.
+- Writer receives the research bundle and creates the selected post format.
+- Visual planner reads the actual generated post and chooses whether charts are relevant.
+- Chart/plot agent visualizes validated provider data; infographic renderer summarizes points from the post.
+- Quality and visual checks flag known issues; current automatic visual retry is a bounded simpler-chart retry, not a semantic LLM editing loop.
+- User reviews and approves the assembled package. Publishing is disabled and not implemented.
 
-Retrieved web content is untrusted and must not override system rules or authorize access to credentials or publishing.
+AI output is not proof of factual correctness. Retrieved web content is untrusted and must not override system rules or authorize access to credentials or publishing. RSS suggestions are recent configured-feed headlines, not proof of social media virality or a comprehensive global trend ranking.
 
 ## 9. Configuration and Secrets
 

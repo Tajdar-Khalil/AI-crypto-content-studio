@@ -88,3 +88,50 @@ def test_fetch_feed_parses_rss_without_external_feed_library(monkeypatch):
     assert article["publisher"] == "Example Crypto News"
     assert "bitcoin ETF flow summary" in article["summary"]
     assert article["published_at"] == "Mon, 19 Oct 2026 09:00:00 GMT"
+
+def test_collect_research_prioritizes_selected_niche_without_accepting_unrelated_sources(monkeypatch):
+    entries = [
+        {
+            "title": "Dollar outlook for technology companies",
+            "url": "https://example.com/technology-dollar",
+            "publisher": "Example",
+            "summary": "Dollar outlook looks supported by technology shares.",
+            "published_at": "Sat, 24 Oct 2026 08:00:00 GMT",
+        },
+        {
+            "title": "Dollar outlook as forex markets move",
+            "url": "https://example.com/forex-dollar",
+            "publisher": "Example Markets",
+            "summary": "Dollar outlook alongside forex and macro markets.",
+            "published_at": "Sat, 24 Oct 2026 07:00:00 GMT",
+        },
+        {
+            "title": "Blockchain wallet security",
+            "url": "https://example.com/wallet",
+            "publisher": "Example Tech",
+            "summary": "A wallet security explainer.",
+            "published_at": "Sat, 24 Oct 2026 09:00:00 GMT",
+        },
+    ]
+    monkeypatch.setattr("content_studio.research_agent._fetch_feed", lambda *args: entries)
+    monkeypatch.setattr(
+        "content_studio.research_agent._collect_market_data",
+        lambda *args: ([], []),
+    )
+    settings = SimpleNamespace(
+        rss_feeds=["https://example.com/feed.xml"],
+        rss_timeout_seconds=2,
+        max_research_results=5,
+        market_data_enabled=False,
+        request_timeout_seconds=2,
+    )
+
+    from content_studio.research_agent import collect_research
+
+    result = collect_research("Dollar outlook", "Forex and macro markets", settings)
+
+    assert result.sources
+    assert result.sources[0].url == "https://example.com/forex-dollar"
+    assert all(source.directly_relevant for source in result.sources)
+    assert all("wallet" not in source.url for source in result.sources)
+
