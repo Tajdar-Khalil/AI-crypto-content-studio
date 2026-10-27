@@ -5,6 +5,7 @@ from __future__ import annotations
 import streamlit as st
 
 from content_studio.config import get_settings
+from content_studio.binance_square import publish_text_post
 from content_studio.database import init_db
 from content_studio.models import MarketSnapshot, ResearchBundle, ResearchSource
 from content_studio.pipeline_service import generate_content_package
@@ -59,8 +60,15 @@ def _reset_package_state() -> None:
     st.session_state.generated_post = ""
     st.session_state.post_quality = None
     st.session_state.visual_package = None
+
+    # Local package approval
     st.session_state.package_approved = False
     st.session_state.approval_confirmation = False
+
+    # Binance publishing safety
+    st.session_state.publish_confirmation = False
+    st.session_state.publish_attempted = False
+    st.session_state.publish_result = None
 
 
 def _render_research_evidence(research_data: dict) -> None:
@@ -208,6 +216,9 @@ def render_content_workspace() -> None:
         "visual_period_preference": "7d",
         "package_approved": False,
         "approval_confirmation": False,
+        "publish_confirmation": False,
+        "publish_attempted": False,
+        "publish_result": None,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -232,7 +243,7 @@ def render_content_workspace() -> None:
             f"Binance public market data: **{'Enabled' if settings.market_data_enabled else 'Disabled'}**"
         )
         st.write("Text-to-image provider: **Not connected**")
-        st.write("Binance Square publishing: **Not implemented**")
+        st.write("Binance Square publishing: **Official script integration configured**")
         st.divider()
         st.markdown("**Agent path**")
         st.markdown(
@@ -241,7 +252,7 @@ def render_content_workspace() -> None:
             "3. Content-to-visual planner\\n"
             "4. Chart/plot + infographic agents\\n"
             "5. Validation and automatic retry\\n"
-            "6. User approval and download"
+            "6. User approval, download, and optional confirmed publishing"
         )
 
     st.markdown("## 1 · Research and topic discovery")
@@ -410,6 +421,9 @@ def render_content_workspace() -> None:
             st.session_state.generated_topic = research_bundle.topic
             st.session_state.package_approved = False
             st.session_state.approval_confirmation = False
+            st.session_state.publish_confirmation = False
+            st.session_state.publish_attempted = False
+            st.session_state.publish_result = None
             st.session_state.visual_market_preference = preferred_market_type
             st.session_state.visual_period_preference = period_choice
             st.session_state[f"post_editor_{package['draft_id']}"] = package["post_text"]
@@ -474,6 +488,9 @@ def render_content_workspace() -> None:
                     st.session_state.visual_package = updated_visuals
                     st.session_state.package_approved = False
                     st.session_state.approval_confirmation = False
+                    st.session_state.publish_confirmation = False
+                    st.session_state.publish_attempted = False
+                    st.session_state.publish_result = None
                     st.success("Edits saved. The visual agent regenerated and rechecked the visuals from the edited post.")
                     st.rerun()
                 except Exception as exc:
@@ -539,14 +556,65 @@ def render_content_workspace() -> None:
                         key="download_approved_infographic",
                     )
                 st.info(
-                    "Approval and downloads work locally. Automatic publishing to Binance Square is not connected yet; "
-                    "review the exported package and publish manually until a supported publishing integration is implemented."
+                    "Your content package is approved locally. Publishing requires a separate "
+                    "confirmation below. Review the exact post text before submitting it."
                 )
-                st.button(
-                    "Publish to Binance Square",
-                    disabled=True,
-                    help="Publishing integration is not implemented in this branch.",
+
+                st.markdown("### Publish to Binance Square")
+                st.warning(
+                    "Publishing creates a real public post on your Binance Square account. "
+                    "Check the content carefully before proceeding."
                 )
+
+                with st.expander("Review exact text to publish", expanded=True):
+                    st.text(st.session_state.get("generated_post", ""))
+
+                st.checkbox(
+                    "I confirm that I want to publish this exact post to my Binance Square account.",
+                    key="publish_confirmation",
+                )
+
+                publish_result = st.session_state.get("publish_result")
+                if publish_result:
+                    if publish_result.get("success"):
+                        st.success("Binance Square reported a successful publishing operation.")
+                        st.code(publish_result.get("message", ""))
+                    else:
+                        st.error("The publishing operation did not return a confirmed success.")
+                        st.code(publish_result.get("message", "No details were returned."))
+
+                        if publish_result.get("uncertain"):
+                            st.warning(
+                                "The result may be uncertain. Check your Binance Square profile "
+                                "before attempting another submission. Do not retry automatically."
+                            )
+
+                if not st.session_state.get("publish_attempted", False):
+                    if st.button(
+                        "Publish approved post to Binance Square",
+                        type="primary",
+                        use_container_width=True,
+                        key="publish_binance_square",
+                        disabled=(
+                            not st.session_state.get("publish_confirmation", False)
+                            or not st.session_state.get("generated_post", "").strip()
+                        ),
+                    ):
+                        # Set this before making the external request to reduce
+                        # accidental duplicate submissions on ordinary reruns.
+                        st.session_state.publish_attempted = True
+
+                        with st.spinner("Submitting your approved post to Binance Square..."):
+                            st.session_state.publish_result = publish_text_post(
+                                st.session_state.get("generated_post", "")
+                            )
+
+                        st.rerun()
+                else:
+                    st.warning(
+                        "A publishing attempt has already been made for this package. "
+                        "Check Binance Square before considering another attempt."
+                    )
 
     with st.expander("Saved draft history", expanded=False):
         drafts = list_drafts(settings.database_path, limit=25)
@@ -601,12 +669,14 @@ def render_content_workspace() -> None:
                         )
                     st.session_state.package_approved = False
                     st.session_state.approval_confirmation = False
+                    st.session_state.publish_attempted = False
+                    st.session_state.publish_result = None
                     st.rerun()
 
     st.caption(
         "Research and writing use configured sources and your selected AI provider. Market charts use validated public Binance "
         "Spot/Futures candles only when the written post justifies them. The infographic is a post-derived template graphic. "
-        "No trades are placed and publishing is not performed."
+        "No trades are placed. Binance Square publishing only runs after separate explicit confirmation."
     )
 
 
