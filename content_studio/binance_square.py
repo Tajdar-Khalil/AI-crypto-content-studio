@@ -1,8 +1,10 @@
 
 import os
+import re
 import subprocess
 from pathlib import Path
-
+from typing import Any
+from urllib.parse import urlparse
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PUBLISH_SCRIPT = (
@@ -13,7 +15,12 @@ PUBLISH_SCRIPT = (
 )
 
 
-def publish_text_post(text: str) -> dict:
+def is_configured() -> bool:
+    """Return whether the publishing script can find its dedicated posting key."""
+    return bool(os.environ.get("BINANCE_SQUARE_OPENAPI_KEY", "").strip())
+
+
+def publish_text_post(text: str) -> dict[str, Any]:
     """Publish one text post using Binance's official publishing script."""
 
     if not isinstance(text, str) or not text.strip():
@@ -34,8 +41,8 @@ def publish_text_post(text: str) -> dict:
         return {
             "success": False,
             "message": (
-                "The Binance publishing key is not available to this app. "
-                "Restart Streamlit from a terminal where the key is available."
+                "The dedicated Binance Square posting key is not available to this app. "
+                "Set BINANCE_SQUARE_OPENAPI_KEY in the local environment and restart Streamlit."
             ),
             "uncertain": False,
         }
@@ -67,7 +74,7 @@ def publish_text_post(text: str) -> dict:
     except OSError as exc:
         return {
             "success": False,
-            "message": f"Could not start the publishing script: {exc}",
+            "message": f"Could not start the publishing script ({type(exc).__name__}).",
             "uncertain": False,
         }
 
@@ -76,16 +83,33 @@ def publish_text_post(text: str) -> dict:
     ).strip()
 
     if result.returncode == 0:
+        post_id_match = re.search(r"^ID:\s*(.+)$", output, flags=re.MULTILINE)
+        post_url_match = re.search(r"^Link:\s*(.+)$", output, flags=re.MULTILINE)
+        candidate_id = post_id_match.group(1).strip() if post_id_match else ""
+        post_id = candidate_id if re.fullmatch(r"\d+", candidate_id) else ""
+        candidate_url = post_url_match.group(1).strip() if post_url_match else ""
+        parsed_url = urlparse(candidate_url)
+        valid_url = (
+            parsed_url.scheme == "https"
+            and parsed_url.hostname in {"binance.com", "www.binance.com"}
+            and bool(re.fullmatch(r"/square/post/\d+", parsed_url.path))
+        )
+        post_url = candidate_url if valid_url else ""
         return {
             "success": True,
             "message": output or "Binance returned a successful exit status.",
             "uncertain": False,
+            "external_post_id": post_id or None,
+            "external_post_url": post_url or None,
         }
 
     # Do not automatically retry: a failed response may not always prove
     # that the remote service did not accept the post.
+    lower_output = output.casefold()
+    provider_rejected = "api error [" in lower_output
+    uncertain = not provider_rejected
     return {
         "success": False,
         "message": output or f"Publishing script exited with code {result.returncode}.",
-        "uncertain": True,
+        "uncertain": uncertain,
     }

@@ -56,7 +56,7 @@ All modules are in one deployable application. UI rendering must not contain raw
 - `content_studio/writer_agent.py`: post generation.
 - `content_studio/image_agent.py`: image generation when implemented.
 - `content_studio/quality_agent.py`: quality checks.
-- `content_studio/publishing_service.py`: publishing eligibility and result handling when implemented.
+- `content_studio/publishing_service.py`: approved-version checks, explicit publish orchestration, duplicate prevention, and result handling for Binance Square.
 - `content_studio/integrations/`: target location for provider-specific adapters as existing network calls are extracted in focused, tested refactors. In the current prototype, Groq calls are still in `writer_agent.py`, and RSS/market calls are still in `research_agent.py`; do not move these as part of unrelated setup changes.
 - `content_studio/ui_components.py`: reusable presentation helpers.
 - `tests/`: automated tests.

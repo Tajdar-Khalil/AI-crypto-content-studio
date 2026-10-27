@@ -4,13 +4,20 @@ from __future__ import annotations
 
 import streamlit as st
 
+from content_studio.binance_square import is_configured
 from content_studio.config import get_settings
-from content_studio.binance_square import publish_text_post
 from content_studio.database import init_db
 from content_studio.models import MarketSnapshot, ResearchBundle, ResearchSource
 from content_studio.pipeline_service import generate_content_package
+from content_studio.publishing_service import publish_approved_draft
 from content_studio.quality_agent import check_content
-from content_studio.repositories import get_draft, list_drafts, update_draft
+from content_studio.repositories import (
+    approve_draft_version,
+    get_draft,
+    get_publishing_attempts,
+    list_drafts,
+    update_draft,
+)
 from content_studio.research_agent import collect_research
 from content_studio.topic_agent import discover_topic_ideas
 from content_studio.ui_components import render_page_header
@@ -243,7 +250,10 @@ def render_content_workspace() -> None:
             f"Binance public market data: **{'Enabled' if settings.market_data_enabled else 'Disabled'}**"
         )
         st.write("Text-to-image provider: **Not connected**")
-        st.write("Binance Square publishing: **Official script integration configured**")
+        st.write(
+            "Binance Square publishing: **"
+            f"{'Posting key configured' if is_configured() else 'Posting key not configured'}**"
+        )
         st.divider()
         st.markdown("**Agent path**")
         st.markdown(
@@ -525,8 +535,19 @@ def render_content_workspace() -> None:
                 key="approve_package",
             ):
                 if st.session_state.approval_confirmation:
-                    st.session_state.package_approved = True
-                    st.success("Package approved locally. Downloads are now available.")
+                    try:
+                        current = get_draft(settings.database_path, str(active_draft_id))
+                        if current is None:
+                            raise LookupError("Saved draft not found. Reload or generate it again.")
+                        approve_draft_version(
+                            settings.database_path,
+                            str(active_draft_id),
+                            int(current["current_version_number"]),
+                        )
+                        st.session_state.package_approved = True
+                        st.success("Package approved. Downloads and the separate publish action are available.")
+                    except (LookupError, ValueError) as exc:
+                        st.error(str(exc))
                 else:
                     st.warning("Tick the review confirmation before approving the package.")
 
@@ -561,9 +582,15 @@ def render_content_workspace() -> None:
                 )
 
                 st.markdown("### Publish to Binance Square")
+                if not is_configured():
+                    st.warning(
+                        "Publishing is not connected. Add the dedicated Binance Square posting key "
+                        "to BINANCE_SQUARE_OPENAPI_KEY in your local environment, then restart the app."
+                    )
                 st.warning(
                     "Publishing creates a real public post on your Binance Square account. "
-                    "Check the content carefully before proceeding."
+                    "The current integration sends text only; generated charts and infographics "
+                    "remain available as downloads. Check the content carefully before proceeding."
                 )
 
                 with st.expander("Review exact text to publish", expanded=True):
@@ -578,7 +605,17 @@ def render_content_workspace() -> None:
                 if publish_result:
                     if publish_result.get("success"):
                         st.success("Binance Square reported a successful publishing operation.")
-                        st.code(publish_result.get("message", ""))
+                        post_url = publish_result.get("external_post_url")
+                        post_id = publish_result.get("external_post_id")
+                        if post_url:
+                            st.markdown(f"[Open published post]({post_url})")
+                        elif post_id:
+                            st.markdown(f"[Open published post](https://www.binance.com/square/post/{post_id})")
+                        else:
+                            st.info(
+                                "Binance reported success, but did not return a post link or ID. "
+                                "Verify it in your Square profile before taking further action."
+                            )
                     else:
                         st.error("The publishing operation did not return a confirmed success.")
                         st.code(publish_result.get("message", "No details were returned."))
@@ -598,16 +635,40 @@ def render_content_workspace() -> None:
                         disabled=(
                             not st.session_state.get("publish_confirmation", False)
                             or not st.session_state.get("generated_post", "").strip()
+                            or not is_configured()
                         ),
                     ):
                         # Set this before making the external request to reduce
                         # accidental duplicate submissions on ordinary reruns.
                         st.session_state.publish_attempted = True
 
-                        with st.spinner("Submitting your approved post to Binance Square..."):
-                            st.session_state.publish_result = publish_text_post(
-                                st.session_state.get("generated_post", "")
-                            )
+                        try:
+                            current = get_draft(settings.database_path, str(active_draft_id))
+                            if current is None:
+                                raise LookupError("Saved draft not found. Reload it before publishing.")
+                            with st.spinner("Submitting your approved post to Binance Square..."):
+                                result = publish_approved_draft(
+                                    database_path=settings.database_path,
+                                    draft_id=str(active_draft_id),
+                                    version_number=int(current["current_version_number"]),
+                                    reviewed_text=st.session_state.get("generated_post", ""),
+                                )
+                            st.session_state.publish_result = result
+                        except (LookupError, ValueError) as exc:
+                            st.session_state.publish_result = {
+                                "success": False,
+                                "message": str(exc),
+                                "uncertain": False,
+                            }
+                        except Exception as exc:
+                            st.session_state.publish_result = {
+                                "success": False,
+                                "message": (
+                                    f"Publishing could not be completed ({type(exc).__name__}). "
+                                    "Check Binance Square before retrying."
+                                ),
+                                "uncertain": True,
+                            }
 
                         st.rerun()
                 else:
@@ -645,6 +706,30 @@ def render_content_workspace() -> None:
                 ["Choose a draft…", *labels.keys()],
                 key="saved_draft_selection",
             )
+            if selected_label != "Choose a draft…":
+                selected_id = labels[selected_label]
+                selected_record = get_draft(settings.database_path, str(selected_id))
+                if selected_record:
+                    attempts = get_publishing_attempts(
+                        settings.database_path,
+                        str(selected_id),
+                        int(selected_record["current_version_number"]),
+                    )
+                    if attempts:
+                        with st.expander("Publishing history for this version", expanded=False):
+                            for attempt in attempts:
+                                submitted = attempt.get("submitted_at") or "Submission time unavailable"
+                                st.markdown(f"**{attempt['status'].replace('_', ' ').title()}** · {submitted}")
+                                if attempt.get("external_post_url"):
+                                    st.markdown(f"[Open published post]({attempt['external_post_url']})")
+                                elif attempt.get("external_post_id"):
+                                    post_id = attempt["external_post_id"]
+                                    st.markdown(
+                                        f"[Open published post](https://www.binance.com/square/post/{post_id})"
+                                    )
+                                if attempt.get("error_summary"):
+                                    st.caption(attempt["error_summary"])
+                                st.divider()
             if selected_label != "Choose a draft…" and st.button("Load saved draft", key="load_saved_draft"):
                 selected_id = labels[selected_label]
                 record = get_draft(settings.database_path, str(selected_id))
@@ -669,6 +754,7 @@ def render_content_workspace() -> None:
                         )
                     st.session_state.package_approved = False
                     st.session_state.approval_confirmation = False
+                    st.session_state.publish_confirmation = False
                     st.session_state.publish_attempted = False
                     st.session_state.publish_result = None
                     st.rerun()

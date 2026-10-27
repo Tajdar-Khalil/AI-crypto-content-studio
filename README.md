@@ -2,7 +2,7 @@
 
 A single-user Streamlit application that researches finance, cryptocurrency, trading, forex, spot/futures, and digital-asset technology topics; creates source-grounded posts; derives matching charts and infographics from the written post; validates the package; and provides a local approval and download flow.
 
-Current implemented scope on the content-first workflow branch: niche-aware recent-topic suggestions from configured RSS feeds, RSS evidence collection, optional Binance Spot/Futures market data, Groq text generation (with optional Gemini support), selectable post formats, post-derived chart planning, Matplotlib charts, a template infographic, deterministic visual/quality checks, a one-time simpler-chart retry, draft editing, local approval and downloads, and SQLite history. Text-to-image generation, automatic scheduling, and Binance Square publishing are not implemented.
+Current implemented scope: niche-aware recent-topic suggestions from configured RSS feeds, RSS evidence collection, optional Binance Spot/Futures market data, Groq text generation (with optional Gemini support), selectable post formats, post-derived chart planning, Matplotlib charts, a template infographic, deterministic visual/quality checks, draft editing, versioned approval and downloads, SQLite history, and explicitly confirmed text-only publishing to Binance Square through Binance's official Square posting script. Text-to-image generation and automatic scheduling are not implemented.
 
 Requirements
 - Python 3.11 or newer
@@ -20,7 +20,8 @@ Windows setup (PowerShell)
    Copy-Item .env.example .env
    notepad .env
 5. Keep AI_PROVIDER=groq, set GROQ_API_KEY, and verify GROQ_MODEL against the current model list. Do not commit .env or share the key.
-6. Start the dashboard:
+6. Optional publishing: create a dedicated Square posting key in Binance Square Creator Center and add `BINANCE_SQUARE_OPENAPI_KEY` to `.env`. Never use trading or wallet credentials. Publishing remains a separate, explicit confirmation after draft approval.
+7. Start the dashboard:
    streamlit run app.py
 Streamlit prints a local URL, normally http://localhost:8501.
 Development checks
@@ -30,6 +31,7 @@ Format the source before checking it:
 The check script runs syntax compilation, tests, Ruff linting, and Mypy. On macOS/Linux, run sh scripts/format.sh followed by sh scripts/check.sh.
 
 If using Gemini instead of the working Groq default, install its optional SDK with pip install -r requirements-gemini.txt.
+Binance Square publishing requires Node.js 18 or newer and the dedicated posting key. The current adapter publishes text only; charts and infographics remain downloadable files.
 Configuration
 All local environment variables are documented in .env.example.
 Variable	Purpose	Default
@@ -88,7 +90,7 @@ Current limitations
 - RSS is a limited research source, not a full web-search engine.
 - Topic matching is keyword-based and can miss relevant news.
 - Quality checks do not guarantee factual accuracy or regulatory compliance.
-- A text-to-image image-generation provider, automatic scheduling, and Binance Square publishing are not implemented. The infographic currently uses a template-based Matplotlib renderer.
+- A text-to-image image-generation provider and automatic scheduling are not implemented. The infographic currently uses a template-based Matplotlib renderer. Binance Square posting is text-only; image attachment is not implemented.
 - Free API tiers have quotas and may change.
 - The application is intended for local single-owner use. Remote exposure requires an appropriate authentication layer and HTTPS.
 Troubleshooting
