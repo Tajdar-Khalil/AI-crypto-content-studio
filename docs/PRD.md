@@ -94,7 +94,7 @@ The implementation must follow these assumptions unless the product owner approv
 | A-06 | Market data | Binance public market data and/or a configured cryptocurrency data provider | Provisional |
 | A-07 | Persistence | SQLite for the initial local application | Assumption |
 | A-08 | Initial hosting | Run locally or on a suitable single-user host | Assumption |
-| A-09 | Content formats | Text publishing is the baseline; image publishing depends on verified support in the selected Binance integration | Requires technical verification |
+| A-09 | Content formats | The implemented Square integration publishes text only; generated charts and infographics remain downloadable | Confirmed for current MVP |
 | A-10 | Research coverage | Configured official sources, RSS feeds, and supported market-data endpoints | Assumption |
 | A-11 | Automatic scheduling | Local scheduler or another simple configured scheduler | Provisional |
 | A-12 | Operating cost | Prefer free tiers; no assumption of unlimited free API usage | Requirement |
@@ -375,7 +375,7 @@ If material content is changed after approval, the system must invalidate the pr
 ### 7.7 Binance Square Publishing
 
 **FR-037 — Supported publishing integration**  
-The system must use a supported Binance Square publishing integration. The official [Binance Square Skill](https://www.binance.com/en/skills/detail/binance/square-post) should be evaluated first.
+The system uses Binance's official Square posting script for text-only publication. Image attachments are not enabled in this application.
 
 **FR-038 — Dedicated credentials**  
 The system must use the supported dedicated publishing credential, not trading credentials or wallet secrets.
@@ -755,7 +755,7 @@ Requirements:
 
 ### 11.5 Binance Square Publishing
 
-**Preferred candidate:** [Official Binance Square Skill](https://www.binance.com/en/skills/detail/binance/square-post)
+**Implemented integration:** [Official Binance Square Skill](https://www.binance.com/en/skills/detail/binance/square-post), invoked through the local text-post script.
 
 Requirements:
 

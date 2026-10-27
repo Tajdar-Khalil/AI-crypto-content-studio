@@ -17,7 +17,7 @@ from .models import MarketSnapshot
 
 MarketType = Literal["spot", "futures"]
 Period = Literal["24h", "7d", "30d"]
-ChartType = Literal["line", "bar", "candlestick", "comparison"]
+ChartType = Literal["line", "bar", "volume", "candlestick", "comparison"]
 
 SPOT_BASE_URL = "https://data-api.binance.vision/api/v3"
 FUTURES_BASE_URL = "https://fapi.binance.com/fapi/v1"
@@ -235,7 +235,7 @@ def render_market_chart(
     """Render a chart as a PNG using only the supplied, validated market data."""
     if frame.empty:
         raise ValueError("Cannot chart an empty data frame.")
-    if chart_type not in {"line", "bar", "candlestick", "comparison"}:
+    if chart_type not in {"line", "bar", "volume", "candlestick", "comparison"}:
         raise ValueError(f"Unsupported chart type: {chart_type}")
 
     fig = Figure(figsize=(10, 5.5), constrained_layout=True)
@@ -251,6 +251,11 @@ def render_market_chart(
         ax.bar(frame["open_time"], changes, width=bar_width)
         ax.axhline(0, linewidth=0.8)
         ax.set_ylabel("Price change per candle (%)")
+    elif chart_type == "volume":
+        bar_width = {"24h": 0.007, "7d": 0.03, "30d": 0.12}[period]
+        ax.bar(frame["open_time"], frame["quote_volume"], width=bar_width)
+        ax.set_ylabel("Quote volume (USDT)")
+        title = f"{symbol.upper()} quote volume · {market_type.title()} · {period}"
     elif chart_type == "candlestick":
         dates = mdates.date2num(frame["open_time"].dt.to_pydatetime())
         if len(dates) > 1:

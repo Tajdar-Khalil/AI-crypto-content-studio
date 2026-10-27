@@ -67,12 +67,12 @@ CoinGecko may be added as an optional data provider. Use the current official pl
 
 ## 7. Binance Square Publishing
 
-Use the supported official Binance Square Skill:
+The application currently uses the official Binance Square posting script from the Square Skill for text posts only. Its local adapter runs `scripts/binance-square/post-text.mjs` with Node.js 18+ and reads `BINANCE_SQUARE_OPENAPI_KEY` from the process environment. It never accepts trading or wallet credentials. The UI requires saved-version approval and a separate publish confirmation.
 
 - https://www.binance.com/en/skills/detail/binance/square-post
 - https://github.com/binance/binance-skills-hub/tree/main/skills/binance/square-post
 
-Verify the installed Skill's runtime, command, authentication, supported post formats, payload, results, and limits. Text is the baseline; enable image publishing only after the current integration confirms support.
+The current local script publishes text and reports the post ID/link. Image publishing is not enabled in the application; generated charts and infographics are downloads. Keep the integration aligned to the official skill's current runtime and payload requirements.
 
 The publishing service retrieves the approved version from persistent storage and constructs the payload server-side. Revalidate quality status, approval version, configuration, and active attempts immediately before submission. Persist a publishing-attempt record and record confirmed result IDs/URLs.
 

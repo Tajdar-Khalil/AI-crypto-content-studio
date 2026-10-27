@@ -4,7 +4,12 @@ import pytest
 
 from content_studio.config import Settings
 from content_studio.models import ResearchBundle, ResearchSource
-from content_studio.writer_agent import WriterConfigurationError, WriterProviderError, generate_post
+from content_studio.writer_agent import (
+    WriterConfigurationError,
+    WriterProviderError,
+    build_prompt,
+    generate_post,
+)
 
 
 def make_settings(tmp_path, **overrides):
@@ -79,3 +84,18 @@ def test_no_research_means_no_ai_call(tmp_path):
     )
     with pytest.raises(WriterConfigurationError, match="no directly relevant research sources"):
         generate_post("Bitcoin", "Crypto education", "Clear", "Short", empty, settings)
+
+def test_writer_prompt_respects_selected_post_format():
+    prompt = build_prompt(
+        "Bitcoin market movement",
+        "Crypto market analysis",
+        "Professional and analytical",
+        "Medium",
+        make_research(),
+        post_format="Numbered thread",
+    )
+
+    assert "Selected post format: Numbered thread" in prompt
+    assert "coherent numbered sequence" in prompt
+    assert "Bitcoin market movement" in prompt
+

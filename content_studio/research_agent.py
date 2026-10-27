@@ -252,6 +252,7 @@ def collect_research(topic: str, category: str, settings: Settings) -> ResearchB
         raise ValueError("A research topic is required.")
     retrieved_at = _now()
     terms = _topic_terms(clean_topic)
+    category_terms = _topic_terms(category)
     warnings: list[str] = []
     entries: list[dict[str, str | None]] = []
 
@@ -271,7 +272,11 @@ def collect_research(topic: str, category: str, settings: Settings) -> ResearchB
     for entry in deduplicated.values():
         title = str(entry["title"] or "")
         summary = str(entry["summary"] or "")
-        score = _relevance(terms, title, summary)
+        topic_score = _relevance(terms, title, summary)
+        niche_score = _relevance(category_terms, title, summary)
+        # Niche improves ranking only; a source must still match the requested topic
+        # before it is allowed to support factual claims in the draft.
+        score = topic_score + min(niche_score, 3)
         if entry["url"]:
             suggestions.append(
                 {
@@ -280,7 +285,7 @@ def collect_research(topic: str, category: str, settings: Settings) -> ResearchB
                     "publisher": str(entry["publisher"] or "Unknown publisher"),
                 }
             )
-        if score > 0:
+        if topic_score > 0:
             scored.append((score, entry))
 
     scored.sort(

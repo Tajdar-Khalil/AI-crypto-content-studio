@@ -118,6 +118,8 @@ def test_render_line_and_candlestick_charts_as_png() -> None:
 
     line_png = render_market_chart(frame, "BTCUSDT", "spot", "24h", "line")
     candle_png = render_market_chart(frame, "BTCUSDT", "futures", "7d", "candlestick")
+    volume_png = render_market_chart(frame, "BTCUSDT", "spot", "24h", "volume")
 
     assert line_png.startswith(b"\x89PNG\r\n\x1a\n")
     assert candle_png.startswith(b"\x89PNG\r\n\x1a\n")
+    assert volume_png.startswith(b"\x89PNG\r\n\x1a\n")

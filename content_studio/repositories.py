@@ -101,7 +101,6 @@ def finish_stage(
     finally:
         connection.close()
 
-
 def finish_workflow(
     database_path: str | Path,
     workflow_id: str,
@@ -409,5 +408,278 @@ def update_draft(
                         str(draft_id),
                     ),
                 )
+    finally:
+        connection.close()
+
+
+def get_publishing_attempts(
+    database_path: str | Path,
+    draft_id: str,
+    draft_version_number: int,
+) -> list[dict[str, Any]]:
+    """Return publishing attempts for a specific draft version."""
+    connection = get_connection(database_path)
+    try:
+        rows = connection.execute(
+            """
+            SELECT id, draft_id, draft_version_number, target_platform,
+                   status, attempt_number, submitted_at, completed_at,
+                   external_post_id, external_post_url,
+                   error_code, error_summary
+            FROM publishing_attempts
+            WHERE draft_id = ?
+              AND draft_version_number = ?
+              AND target_platform = 'binance_square'
+            ORDER BY attempt_number DESC
+            """,
+            (str(draft_id), int(draft_version_number)),
+        ).fetchall()
+
+        return [dict(row) for row in rows]
+    finally:
+        connection.close()
+
+
+def create_publishing_attempt(
+    database_path: str | Path,
+    draft_id: str,
+    draft_version_number: int,
+) -> dict[str, Any]:
+    """Atomically create an attempt, refusing to duplicate unresolved submissions."""
+    connection = get_connection(database_path)
+    attempt_id = str(uuid.uuid4())
+    now = utc_now()
+
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+
+        draft = connection.execute(
+            """
+            SELECT current_version_number, approved_version_number, status
+            FROM drafts
+            WHERE id = ?
+            """,
+            (str(draft_id),),
+        ).fetchone()
+
+        if draft is None:
+            raise LookupError("Draft not found.")
+
+        if int(draft["current_version_number"]) != int(draft_version_number):
+            raise ValueError("The draft has changed. Review the latest version first.")
+
+        if draft["approved_version_number"] != int(draft_version_number):
+            raise ValueError("This exact draft version has not been approved.")
+
+        quality = connection.execute(
+            "SELECT quality_status FROM draft_versions WHERE draft_id = ? AND version_number = ?",
+            (str(draft_id), int(draft_version_number)),
+        ).fetchone()
+        if quality is None or quality["quality_status"] not in {"passed", "passed_with_warnings"}:
+            raise ValueError("This draft version has not passed its quality check.")
+
+        previous = connection.execute(
+            """
+            SELECT id, status, attempt_number
+            FROM publishing_attempts
+            WHERE draft_id = ?
+              AND draft_version_number = ?
+              AND target_platform = 'binance_square'
+            ORDER BY attempt_number DESC
+            LIMIT 1
+            """,
+            (str(draft_id), int(draft_version_number)),
+        ).fetchone()
+
+        if previous and previous["status"] in {"publishing", "uncertain", "published"}:
+            raise ValueError(
+                "A previous publishing attempt is unresolved or already published. "
+                "Check Binance Square before proceeding."
+            )
+
+        attempt_number = (
+            int(previous["attempt_number"]) + 1 if previous else 1
+        )
+
+        connection.execute(
+            """
+            INSERT INTO publishing_attempts (
+                id, draft_id, draft_version_number, target_platform,
+                status, attempt_number, idempotency_key, submitted_at
+            )
+            VALUES (?, ?, ?, 'binance_square', 'publishing', ?, ?, ?)
+            """,
+            (
+                attempt_id,
+                str(draft_id),
+                int(draft_version_number),
+                attempt_number,
+                str(uuid.uuid4()),
+                now,
+            ),
+        )
+
+        connection.execute(
+            """
+            UPDATE drafts
+            SET status = 'publishing', updated_at = ?
+            WHERE id = ?
+            """,
+            (now, str(draft_id)),
+        )
+
+        connection.commit()
+
+        return {
+            "id": attempt_id,
+            "draft_id": str(draft_id),
+            "draft_version_number": int(draft_version_number),
+            "attempt_number": attempt_number,
+            "status": "publishing",
+        }
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
+
+
+def finish_publishing_attempt(
+    database_path: str | Path,
+    attempt_id: str,
+    status: str,
+    error_code: str | None = None,
+    error_summary: str | None = None,
+    external_post_id: str | None = None,
+    external_post_url: str | None = None,
+) -> None:
+    """Persist a publishing outcome without automatically retrying."""
+    if status not in {"published", "failed", "uncertain"}:
+        raise ValueError(f"Unsupported publishing result: {status}")
+
+    connection = get_connection(database_path)
+    now = utc_now()
+
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+
+        attempt = connection.execute(
+            """
+            SELECT draft_id, status
+            FROM publishing_attempts
+            WHERE id = ?
+            """,
+            (str(attempt_id),),
+        ).fetchone()
+
+        if attempt is None:
+            raise LookupError("Publishing attempt not found.")
+
+        if attempt["status"] != "publishing":
+            raise ValueError("This publishing attempt has already been finalized.")
+
+        connection.execute(
+            """
+            UPDATE publishing_attempts
+            SET status = ?, completed_at = ?,
+                external_post_id = ?, external_post_url = ?,
+                error_code = ?, error_summary = ?
+            WHERE id = ?
+            """,
+            (
+                status,
+                now,
+                external_post_id,
+                external_post_url,
+                error_code,
+                error_summary,
+                str(attempt_id),
+            ),
+        )
+
+        draft_status = {
+            "published": "published",
+            "failed": "publishing_failed",
+            "uncertain": "publishing_uncertain",
+        }[status]
+
+        connection.execute(
+            """
+            UPDATE drafts
+            SET status = ?, updated_at = ?
+            WHERE id = ?
+            """,
+            (draft_status, now, attempt["draft_id"]),
+        )
+
+        connection.commit()
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
+
+
+def approve_draft_version(
+    database_path: str,
+    draft_id: str,
+    version_number: int,
+) -> None:
+    """Approve the current draft version after its quality check passes."""
+    connection = get_connection(database_path)
+
+    try:
+        with connection:
+            draft = connection.execute(
+                """
+                SELECT current_version_number
+                FROM drafts
+                WHERE id = ?
+                """,
+                (draft_id,),
+            ).fetchone()
+
+            if draft is None:
+                raise LookupError(f"Draft not found: {draft_id}")
+
+            current_version = int(draft["current_version_number"])
+
+            if current_version != version_number:
+                raise ValueError(
+                    "This draft has changed. Reload it before approving."
+                )
+
+            version = connection.execute(
+                """
+                SELECT quality_status
+                FROM draft_versions
+                WHERE draft_id = ? AND version_number = ?
+                """,
+                (draft_id, version_number),
+            ).fetchone()
+
+            if version is None:
+                raise LookupError("Draft version not found.")
+
+            quality_status = version["quality_status"]
+
+            if quality_status not in {"passed", "passed_with_warnings"}:
+                raise ValueError(
+                    "Only drafts that pass the quality check can be approved."
+                )
+
+            now = utc_now()
+
+            connection.execute(
+                """
+                UPDATE drafts
+                SET approved_version_number = ?,
+                    approved_at = ?,
+                    status = 'approved',
+                    updated_at = ?
+                WHERE id = ?
+                """,
+                (version_number, now, now, draft_id),
+            )
     finally:
         connection.close()

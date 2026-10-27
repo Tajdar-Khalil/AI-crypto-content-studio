@@ -26,8 +26,9 @@ def generate_and_save_draft(
     target_length: str,
     research: ResearchBundle,
     settings: Settings,
+    post_format: str = "Educational explainer",
 ) -> tuple[str, str, dict[str, Any]]:
-    """Generate, quality-check, and persist a draft; no publishing is performed."""
+    """Generate a selected-format post, quality-check it, and persist the draft."""
     if not research.sources:
         raise ValueError("Research sources are required before draft generation.")
 
@@ -40,7 +41,15 @@ def generate_and_save_draft(
 
     writing_stage_id = start_stage(database_path, workflow_id, "writing")
     try:
-        draft_text = generate_post(topic, category, tone, target_length, research, settings)
+        draft_text = generate_post(
+            topic,
+            category,
+            tone,
+            target_length,
+            research,
+            settings,
+            post_format=post_format,
+        )
         finish_stage(database_path, writing_stage_id, "completed")
     except Exception as exc:
         finish_stage(
